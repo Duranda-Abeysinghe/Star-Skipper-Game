@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Star Skipper</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f8fbff;
+      --muted: #a8b7c7;
+      --panel: rgba(10, 18, 28, 0.78);
+      --line: rgba(255, 255, 255, 0.18);
+      --gold: #ffd166;
+      --mint: #48d6a0;
+      --coral: #ff6b6b;
+      --sky: #75ddff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #07111f;
+      color: var(--ink);
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(117, 221, 255, 0.22), transparent 28%),
+        radial-gradient(circle at 82% 10%, rgba(255, 209, 102, 0.16), transparent 24%),
+        linear-gradient(135deg, #07111f 0%, #102033 48%, #121525 100%);
+    }
+
+    .shell {
+      position: relative;
+      width: min(100vw, 1100px);
+      height: min(100vh, 720px);
+      min-height: 520px;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #081423;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.38);
+      touch-action: none;
+    }
+
+    .hud {
+      position: absolute;
+      inset: 30px 30px auto 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      pointer-events: none;
+    }
+
+    .scoreboard {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .pill {
+      min-width: 92px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: var(--panel);
+      backdrop-filter: blur(12px);
+    }
+
+    .label {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.1;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .value {
+      display: block;
+      margin-top: 2px;
+      font-size: 20px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .title {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 12px;
+      background: var(--panel);
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 750;
+      backdrop-filter: blur(12px);
+      white-space: nowrap;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 18px;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+    }
+
+    .menu {
+      width: min(92%, 430px);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+      background: rgba(8, 17, 31, 0.86);
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.44);
+      backdrop-filter: blur(18px);
+      text-align: center;
+      pointer-events: auto;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(34px, 6vw, 60px);
+      line-height: 0.95;
+      letter-spacing: 0;
+    }
+
+    .tagline {
+      margin: 12px auto 18px;
+      max-width: 31ch;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      min-width: 132px;
+      min-height: 44px;
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #06111d;
+      background: var(--gold);
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 12px 28px rgba(255, 209, 102, 0.2);
+    }
+
+    button.secondary {
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+
+    button:focus-visible {
+      outline: 3px solid var(--sky);
+      outline-offset: 3px;
+    }
+
+    .hint {
+      margin-top: 16px;
+      color: #c5d2df;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .touch {
+      position: absolute;
+      inset: auto 28px 28px;
+      display: none;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+
+    .touch button {
+      width: 64px;
+      min-width: 64px;
+      height: 54px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid var(--line);
+      pointer-events: auto;
+      box-shadow: none;
+      user-select: none;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 720px) {
+      .shell {
+        width: 100vw;
+        height: 100vh;
+        min-height: 460px;
+        padding: 10px;
+      }
+
+      canvas {
+        border-radius: 0;
+      }
+
+      .hud {
+        inset: 20px 18px auto 18px;
+        align-items: flex-start;
+      }
+
+      .scoreboard {
+        flex-wrap: wrap;
+        width: 198px;
+      }
+
+      .pill {
+        min-width: 90px;
+        padding: 7px 9px;
+      }
+
+      .title {
+        max-width: 116px;
+        white-space: normal;
+        text-align: right;
+      }
+
+      .touch {
+        display: flex;
+      }
+
+      .menu {
+        padding: 20px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell" aria-label="Star Skipper game">
+    <canvas id="game" width="1100" height="720"></canvas>
+
+    <section class="hud" aria-live="polite">
+      <div class="scoreboard">
+        <div class="pill">
+          <span class="label">Score</span>
+          <span class="value" id="score">0</span>
+        </div>
+        <div class="pill">
+          <span class="label">Best</span>
+          <span class="value" id="best">0</span>
+        </div>
+      </div>
+      <div class="title">Star Skipper</div>
+    </section>
+
+    <section class="overlay" id="overlay">
+      <div class="menu">
+        <h1 id="menuTitle">Star Skipper</h1>
+        <p class="tagline" id="menuText">Dash between drifting meteors, collect bright stars, and keep your tiny ship alive.</p>
+        <div class="actions">
+          <button id="startBtn">Start Game</button>
+          <button class="secondary" id="practiceBtn">Practice</button>
+        </div>
+        <p class="hint">Move with arrow keys or WASD. On touch screens, use the controls below.</p>
+      </div>
+    </section>
+
+    <nav class="touch" aria-label="Touch controls">
+      <button data-dir="-1" aria-label="Move left">‹</button>
+      <button data-dir="1" aria-label="Move right">›</button>
+    </nav>
+  </main>
+
+  <script>
+    const canvas = document.querySelector("#game");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.querySelector("#score");
+    const bestEl = document.querySelector("#best");
+    const overlay = document.querySelector("#overlay");
+    const menuTitle = document.querySelector("#menuTitle");
+    const menuText = document.querySelector("#menuText");
+    const startBtn = document.querySelector("#startBtn");
+    const practiceBtn = document.querySelector("#practiceBtn");
+
+    const state = {
+      running: false,
+      practice: false,
+      score: 0,
+      best: Number(localStorage.getItem("star-skipper-best") || 0),
+      time: 0,
+      spawnTimer: 0,
+      starTimer: 0,
+      shake: 0,
+      keys: new Set(),
+      meteors: [],
+      stars: [],
+      sparks: [],
+      ship: { x: 550, y: 600, vx: 0, radius: 19 }
+    };
+
+    bestEl.textContent = state.best;
+
+    function resizeCanvas() {
+      const box = canvas.getBoundingClientRect();
+      const ratio = Math.max(1, window.devicePixelRatio || 1);
+      canvas.width = Math.floor(box.width * ratio);
+      canvas.height = Math.floor(box.height * ratio);
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    }
+
+    function world() {
+      const box = canvas.getBoundingClientRect();
+      return { w: box.width, h: box.height };
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function rand(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    function totalScore() {
+      return Math.floor(state.time * 6) + state.score;
+    }
+
+    function startGame(practice = false) {
+      const { w, h } = world();
+      state.running = true;
+      state.practice = practice;
+      state.score = 0;
+      state.time = 0;
+      state.spawnTimer = 0.2;
+      state.starTimer = 0.6;
+      state.shake = 0;
+      state.meteors = [];
+      state.stars = [];
+      state.sparks = [];
+      state.ship = { x: w / 2, y: h - 86, vx: 0, radius: 19 };
+      scoreEl.textContent = "0";
+      overlay.classList.add("hidden");
+      canvas.focus();
+    }
+
+    function endGame() {
+      state.running = false;
+      state.shake = 16;
+      state.best = Math.max(state.best, totalScore());
+      localStorage.setItem("star-skipper-best", String(state.best));
+      bestEl.textContent = state.best;
+      menuTitle.textContent = "Run Complete";
+      menuText.textContent = `You scored ${totalScore()}. Thread the gaps, grab stars, and try to beat your best.`;
+      startBtn.textContent = "Play Again";
+      overlay.classList.remove("hidden");
+    }
+
+    function addSparks(x, y, color, count) {
+      for (let i = 0; i < count; i += 1) {
+        state.sparks.push({
+          x,
+          y,
+          vx: rand(-170, 170),
+          vy: rand(-190, 90),
+          life: rand(0.28, 0.65),
+          maxLife: 0.65,
+          color
+        });
+      }
+    }
+
+    function spawnMeteor() {
+      const { w } = world();
+      const size = rand(18, 42);
+      state.meteors.push({
+        x: rand(size, w - size),
+        y: -size,
+        radius: size,
+        vy: (rand(130, 210) + state.time * 5) * (state.practice ? 0.82 : 1),
+        spin: rand(-2.4, 2.4),
+        angle: rand(0, Math.PI * 2)
+      });
+    }
+
+    function spawnStar() {
+      const { w } = world();
+      state.stars.push({
+        x: rand(30, w - 30),
+        y: -24,
+        radius: 12,
+        vy: rand(100, 150),
+        pulse: rand(0, Math.PI * 2)
+      });
+    }
+
+    function update(dt) {
+      if (!state.running) {
+        state.shake = Math.max(0, state.shake - dt * 24);
+        updateSparks(dt);
+        return;
+      }
+
+      const { w, h } = world();
+      state.time += dt;
+      state.spawnTimer -= dt;
+      state.starTimer -= dt;
+
+      const input = (state.keys.has("ArrowRight") || state.keys.has("d") ? 1 : 0) -
+        (state.keys.has("ArrowLeft") || state.keys.has("a") ? 1 : 0);
+      state.ship.vx += input * 920 * dt;
+      state.ship.vx *= Math.pow(0.0015, dt);
+      state.ship.x = clamp(state.ship.x + state.ship.vx * dt, 28, w - 28);
+      state.ship.y = h - 86 + Math.sin(state.time * 5) * 3;
+
+      const gap = state.practice ? 1.35 : 1;
+      if (state.spawnTimer <= 0) {
+        spawnMeteor();
+        state.spawnTimer = Math.max(0.22, (0.82 - state.time * 0.018) * gap);
+      }
+
+      if (state.starTimer <= 0) {
+        spawnStar();
+        state.starTimer = rand(1.15, 1.9);
+      }
+
+      for (const meteor of state.meteors) {
+        meteor.y += meteor.vy * dt;
+        meteor.angle += meteor.spin * dt;
+      }
+
+      for (const star of state.stars) {
+        star.y += star.vy * dt;
+        star.pulse += dt * 7;
+      }
+
+      updateSparks(dt);
+      checkCollisions();
+
+      state.meteors = state.meteors.filter((meteor) => meteor.y < h + meteor.radius + 30);
+      state.stars = state.stars.filter((star) => star.y < h + 40 && !star.collected);
+
+      const newScore = totalScore();
+      scoreEl.textContent = newScore;
+    }
+
+    function updateSparks(dt) {
+      for (const spark of state.sparks) {
+        spark.x += spark.vx * dt;
+        spark.y += spark.vy * dt;
+        spark.vy += 380 * dt;
+        spark.life -= dt;
+      }
+      state.sparks = state.sparks.filter((spark) => spark.life > 0);
+    }
+
+    function distance(a, b) {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      return Math.hypot(dx, dy);
+    }
+
+    function checkCollisions() {
+      for (const meteor of state.meteors) {
+        if (distance(state.ship, meteor) < state.ship.radius + meteor.radius * 0.75) {
+          addSparks(state.ship.x, state.ship.y, "#ff6b6b", 34);
+          endGame();
+          return;
+        }
+      }
+
+      for (const star of state.stars) {
+        if (!star.collected && distance(state.ship, star) < state.ship.radius + star.radius + 6) {
+          star.collected = true;
+          state.score += state.practice ? 5 : 10;
+          scoreEl.textContent = String(Number(scoreEl.textContent) + (state.practice ? 5 : 10));
+          addSparks(star.x, star.y, "#ffd166", 14);
+        }
+      }
+    }
+
+    function draw() {
+      const { w, h } = world();
+      ctx.clearRect(0, 0, w, h);
+
+      const shakeX = state.shake ? rand(-state.shake, state.shake) : 0;
+      const shakeY = state.shake ? rand(-state.shake, state.shake) : 0;
+      ctx.save();
+      ctx.translate(shakeX, shakeY);
+
+      drawSpace(w, h);
+      for (const star of state.stars) drawStar(star);
+      for (const meteor of state.meteors) drawMeteor(meteor);
+      drawShip(state.ship);
+      for (const spark of state.sparks) drawSpark(spark);
+
+      ctx.restore();
+    }
+
+    function drawSpace(w, h) {
+      const gradient = ctx.createLinearGradient(0, 0, 0, h);
+      gradient.addColorStop(0, "#081423");
+      gradient.addColorStop(0.54, "#10243a");
+      gradient.addColorStop(1, "#07111d");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.fillStyle = "rgba(255,255,255,0.78)";
+      for (let i = 0; i < 70; i += 1) {
+        const x = (i * 151 + state.time * (12 + i % 7)) % w;
+        const y = (i * 83 + state.time * (24 + i % 5)) % h;
+        const size = 1 + (i % 3) * 0.6;
+        ctx.globalAlpha = 0.25 + (i % 5) * 0.12;
+        ctx.fillRect(x, y, size, size);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawShip(ship) {
+      ctx.save();
+      ctx.translate(ship.x, ship.y);
+      ctx.rotate(ship.vx * 0.0008);
+
+      ctx.beginPath();
+      ctx.moveTo(0, -25);
+      ctx.lineTo(20, 23);
+      ctx.lineTo(0, 13);
+      ctx.lineTo(-20, 23);
+      ctx.closePath();
+      ctx.fillStyle = "#75ddff";
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(0, 0, 8, 0, Math.PI * 2);
+      ctx.fillStyle = "#f8fbff";
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(-8, 22);
+      ctx.lineTo(0, 38 + Math.sin(state.time * 18) * 5);
+      ctx.lineTo(8, 22);
+      ctx.closePath();
+      ctx.fillStyle = "#48d6a0";
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function drawMeteor(meteor) {
+      ctx.save();
+      ctx.translate(meteor.x, meteor.y);
+      ctx.rotate(meteor.angle);
+      ctx.fillStyle = "#735147";
+      ctx.strokeStyle = "#c07b61";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      for (let i = 0; i < 10; i += 1) {
+        const angle = (Math.PI * 2 * i) / 10;
+        const radius = meteor.radius * (0.72 + (i % 3) * 0.14);
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(255,255,255,0.16)";
+      ctx.beginPath();
+      ctx.arc(-meteor.radius * 0.18, -meteor.radius * 0.22, meteor.radius * 0.22, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawStar(star) {
+      const r = star.radius + Math.sin(star.pulse) * 2;
+      ctx.save();
+      ctx.translate(star.x, star.y);
+      ctx.rotate(star.pulse * 0.18);
+      ctx.fillStyle = "#ffd166";
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = "#ffd166";
+      ctx.beginPath();
+      for (let i = 0; i < 10; i += 1) {
+        const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+        const radius = i % 2 === 0 ? r : r * 0.42;
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawSpark(spark) {
+      ctx.globalAlpha = Math.max(0, spark.life / spark.maxLife);
+      ctx.fillStyle = spark.color;
+      ctx.beginPath();
+      ctx.arc(spark.x, spark.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    let last = performance.now();
+    function frame(now) {
+      const dt = Math.min(0.033, (now - last) / 1000);
+      last = now;
+      update(dt);
+      draw();
+      requestAnimationFrame(frame);
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("keydown", (event) => {
+      const key = event.key.toLowerCase();
+      if (["arrowleft", "arrowright", "a", "d"].includes(key)) {
+        state.keys.add(key === "arrowleft" ? "ArrowLeft" : key === "arrowright" ? "ArrowRight" : key);
+        event.preventDefault();
+      }
+      if (event.key === " " && !state.running) {
+        startGame(false);
+        event.preventDefault();
+      }
+    });
+
+    window.addEventListener("keyup", (event) => {
+      const key = event.key.toLowerCase();
+      state.keys.delete(key === "arrowleft" ? "ArrowLeft" : key === "arrowright" ? "ArrowRight" : key);
+      state.keys.delete(key);
+    });
+
+    document.querySelectorAll("[data-dir]").forEach((button) => {
+      const dir = button.dataset.dir === "1" ? "ArrowRight" : "ArrowLeft";
+      const press = (event) => {
+        state.keys.add(dir);
+        event.preventDefault();
+      };
+      const release = () => state.keys.delete(dir);
+      button.addEventListener("pointerdown", press);
+      button.addEventListener("pointerup", release);
+      button.addEventListener("pointercancel", release);
+      button.addEventListener("pointerleave", release);
+    });
+
+    startBtn.addEventListener("click", () => startGame(false));
+    practiceBtn.addEventListener("click", () => startGame(true));
+
+    resizeCanvas();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
